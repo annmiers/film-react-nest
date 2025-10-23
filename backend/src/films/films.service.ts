@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { FilmsRepository } from '../repository/films.repository';
+import { Injectable, Inject } from '@nestjs/common';
+import { FilmsRepository } from '../repository/films.repository.interface';
 
 @Injectable()
     export class FilmsService {

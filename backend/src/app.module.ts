@@ -1,16 +1,21 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
-import { Film, FilmSchema } from './films/schemas/film.schema';
+import { Film as MongooseFilm, FilmSchema } from './films/schemas/film.schema';
 import { Order, OrderSchema } from './order/schemas/order.schema';
+import { Film as TypeOrmFilm } from './films/entities/film.entity';
+import { Schedule } from './films/entities/schedule.entity';
 import { FilmsController } from './films/films.controller';
 import { OrdersController } from './order/order.controller';
 import { FilmsService } from './films/films.service';
 import { OrdersService } from './order/order.service';
-import { FilmsRepository } from './repository/films.repository';
+import { MongooseFilmsRepository } from './repository/mongoose-films.repository';
+import { TypeOrmFilmsRepository } from './repository/typeorm-films.repository';
 import { configProvider } from './app.config.provider';
+import { FilmsRepository } from './repository/films.repository.interface';
 
 @Module({
   imports: [
@@ -26,9 +31,24 @@ import { configProvider } from './app.config.provider';
       inject: [ConfigService],
     }),
     MongooseModule.forFeature([
-      { name: Film.name, schema: FilmSchema },
+      { name: MongooseFilm.name, schema: FilmSchema },
       { name: Order.name, schema: OrderSchema },
     ]),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres',
+        host: configService.get('POSTGRES_HOST', 'localhost'),
+        port: configService.get('POSTGRES_PORT', 5432),
+        username: configService.get('POSTGRES_USERNAME', 'afisha_user'),
+        password: configService.get('POSTGRES_PASSWORD', 'afisha_pass'),
+        database: configService.get('POSTGRES_DATABASE', 'afisha'),
+        entities: [TypeOrmFilm, Schedule],
+        synchronize: false,
+      }),
+      inject: [ConfigService],
+    }),
+    TypeOrmModule.forFeature([TypeOrmFilm, Schedule]),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public', 'content', 'afisha'),
       serveRoot: '/content/afisha/',
@@ -39,7 +59,20 @@ import { configProvider } from './app.config.provider';
     configProvider,
     FilmsService,
     OrdersService,
-    FilmsRepository,
+    MongooseFilmsRepository,
+    TypeOrmFilmsRepository,
+    {
+      provide: FilmsRepository,
+      useFactory: (
+        configService: ConfigService,
+        mongooseRepo: MongooseFilmsRepository,
+        typeormRepo: TypeOrmFilmsRepository,
+      ) => {
+        const driver = configService.get('DATABASE_DRIVER', 'mongodb');
+        return driver === 'postgres' ? typeormRepo : mongooseRepo;
+      },
+      inject: [ConfigService, MongooseFilmsRepository, TypeOrmFilmsRepository],
+    },
   ],
 })
 export class AppModule {}
