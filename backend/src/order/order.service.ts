@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, Inject } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { FilmsRepository } from '../repository/films.repository.interface';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { randomUUID } from 'crypto';
