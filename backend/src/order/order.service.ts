@@ -1,17 +1,11 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { FilmsRepository } from '../repository/films.repository.interface';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { Order, OrderDocument } from './schemas/order.schema';
-import { FilmsRepository } from '../repository/films.repository';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class OrdersService {
-    constructor(
-        @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
-        private readonly filmsRepository: FilmsRepository,
-    ) {}
+    constructor(private readonly filmsRepository: FilmsRepository) {}
 
     async create(createOrderDtos: CreateOrderDto[]): Promise<{ total: number; items: any[] }> {
         const results = [];
@@ -21,55 +15,28 @@ export class OrdersService {
         const { row, seat: seatNumber } = seat;
 
         const film = await this.filmsRepository.findById(filmId);
-        if (!film) {
-            throw new BadRequestException('Фильм не найден');
-        }
+        if (!film) throw new BadRequestException('Фильм не найден');
 
         const session = film.schedule.find(s => s.id === sessionId);
-        if (!session) {
-            throw new BadRequestException('Бронирование не найдено');
-        }
+        if (!session) throw new BadRequestException('Сеанс не найден');
 
-        const seatKey = `${row}:${seatNumber}`;
-        const isTaken = session.taken.some(
-            t => `${t.row}:${t.seat}` === seatKey
-        );
-
-        if (isTaken) {
-            throw new BadRequestException(`Место ${seatKey} уже занято!`);
-        }
+        const isTaken = session.taken.some(t => t.row === row && t.seat === seatNumber);
+        if (isTaken) throw new BadRequestException(`Место ${row}:${seatNumber} уже занято!`);
 
         session.taken.push({ row, seat: seatNumber });
-
-        await this.filmsRepository.updateOne(
-            { id: filmId },
-            { $set: { schedule: film.schedule } }
-        );
-
-        const { daytime, price } = session;
-
-        const newOrder = new this.orderModel({
-            id: uuidv4(),
-            filmId,
-            sessionId,
-            seat: { row, seat: seatNumber },
-        });
-        const savedOrder = await newOrder.save();
+        await this.filmsRepository.updateOne(filmId, film.schedule);
 
         results.push({
             film: filmId,
             session: sessionId,
-            daytime,
+            daytime: session.daytime,
             row,
             seat: seatNumber,
-            price,
-            id: savedOrder.id,
+            price: session.price,
+            id: randomUUID(),
         });
-        }
+    }
 
-        return {
-        total: results.length,
-        items: results,
-        };
+    return { total: results.length, items: results };
     }
 }
