@@ -20,10 +20,21 @@ export class OrdersService {
         const session = film.schedule.find(s => s.id === sessionId);
         if (!session) throw new BadRequestException('Сеанс не найден');
 
-        const isTaken = session.taken.some(t => t.row === row && t.seat === seatNumber);
-        if (isTaken) throw new BadRequestException(`Место ${row}:${seatNumber} уже занято!`);
+        let takenArray: { row: number; seat: number }[] = [];
+        try {
+        takenArray = session.taken ? JSON.parse(session.taken) : [];
+        } catch (e) {
+        takenArray = [];
+        }
 
-        session.taken.push({ row, seat: seatNumber });
+        const isTaken = takenArray.some(t => t.row === row && t.seat === seatNumber);
+        if (isTaken) {
+        throw new BadRequestException(`Место ${row}:${seatNumber} уже занято!`);
+        }
+
+        takenArray.push({ row, seat: seatNumber });
+        session.taken = JSON.stringify(takenArray);
+
         await this.filmsRepository.updateOne(filmId, film.schedule);
 
         results.push({

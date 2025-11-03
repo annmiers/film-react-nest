@@ -24,24 +24,37 @@ import { FilmsRepository } from '../repository/films.repository.interface';
     }
 
     async getSchedule(id: string): Promise<{ total: number; items: any[] }> {
-        const film = await this.filmsRepository.findById(id);
-        if (!film) {
+    const film = await this.filmsRepository.findById(id);
+    if (!film) {
         throw new Error('Film not found');
+    }
+
+    const items = film.schedule.map(session => {
+        let takenArray: { row: number; seat: number }[] = [];
+
+        if (session.taken && session.taken.startsWith('[') && session.taken.endsWith(']')) {
+        try {
+            takenArray = JSON.parse(session.taken);
+        } catch (e) {
+            console.warn('Invalid JSON in taken:', session.taken);
+            takenArray = [];
+        }
         }
 
-        const items = film.schedule.map(session => ({
+        return {
         id: session.id,
         daytime: session.daytime,
         hall: String(session.hall),
         rows: session.rows,
         seats: session.seats,
         price: session.price,
-        taken: session.taken.map(t => `${t.row}:${t.seat}`),
-        }));
+        taken: takenArray.map(t => `${t.row}:${t.seat}`),
+        };
+    });
 
-        return {
+    return {
         total: items.length,
         items,
-        };
-    }
+    };
+}
 }
