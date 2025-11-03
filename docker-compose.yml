@@ -1,6 +1,6 @@
 services:
   frontend:
-    image: ghcr.io/annmiers/afisha-frontend:latest
+    image: ghcr.io/annmiers/film-react-nest/afisha-frontend:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -9,7 +9,7 @@ services:
     command: ["sh", "-c", "npm run build && echo 'Frontend built and stored in volume.'"]
 
   backend:
-    image: ghcr.io/annmiers/afisha-backend:latest
+    image: ghcr.io/annmiers/film-react-nest/afisha-backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -37,6 +37,7 @@ services:
       - frontend_dist:/usr/share/nginx/html:ro
     depends_on:
       - backend
+      - frontend
 
   db:
     image: postgres:14
