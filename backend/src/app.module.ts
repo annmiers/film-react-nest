@@ -14,8 +14,8 @@ import { DatabaseModule } from './database.module';
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
     DatabaseModule.register(new (require('@nestjs/config').ConfigService)()),
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'public', 'content', 'afisha'),
-      serveRoot: '/content/afisha/',
+      rootPath: join(__dirname, '..', 'public'),
+      renderPath: '/content/afisha/',
     }),
   ],
   controllers: [FilmsController, OrdersController],
