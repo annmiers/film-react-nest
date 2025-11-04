@@ -21,8 +21,8 @@ export class Schedule {
     @Column({ type: 'int' })
     price: number;
 
-    @Column('json')
-    taken: { row: number; seat: number }[];
+    @Column('text')
+    taken: string;
 
     @ManyToOne(() => Film, film => film.schedule)
     @JoinColumn({ name: 'filmId' })

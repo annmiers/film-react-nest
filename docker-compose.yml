@@ -1,0 +1,70 @@
+services:
+  frontend:
+    image: ghcr.io/annmiers/film-react-nest/afisha-frontend:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    volumes:
+      - frontend_dist:/app/dist
+    command: ["sh", "-c", "npm run build && echo 'Frontend built and stored in volume.'"]
+
+  backend:
+    image: ghcr.io/annmiers/film-react-nest/afisha-backend:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_DRIVER=postgres
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USERNAME=afisha_user
+      - POSTGRES_PASSWORD=afisha_pass
+      - POSTGRES_DATABASE=afisha
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+
+  nginx:
+    image: ghcr.io/annmiers/afisha-nginx:latest
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    volumes:
+      - frontend_dist:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+      - frontend
+
+  db:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: afisha_user
+      POSTGRES_PASSWORD: afisha_pass
+      POSTGRES_DB: afisha
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/test:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U afisha_user -d afisha"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+volumes:
+  pgdata:
+  pgadmin_data:
+  frontend_dist:
